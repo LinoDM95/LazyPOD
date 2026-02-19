@@ -1,33 +1,69 @@
 # Terminal-Befehle zum lokalen Start von LazyPOD
 
-Diese Datei enthält die minimalen Befehle, um das Projekt lokal zu starten.
+Diese Datei enthält die Befehle, um das Projekt lokal zu starten – inklusive Docker-Installation.
 
-## Voraussetzungen
+## 0) Docker installieren (falls noch nicht vorhanden)
+
+> Wähle **eine** passende Variante für dein Betriebssystem.
+
+### Ubuntu/Debian (apt, offizielles Docker-Repo)
+```bash
+sudo apt-get update
+sudo apt-get install -y ca-certificates curl gnupg
+sudo install -m 0755 -d /etc/apt/keyrings
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+sudo chmod a+r /etc/apt/keyrings/docker.gpg
+echo \
+  "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
+  $(. /etc/os-release && echo $VERSION_CODENAME) stable" | \
+  sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+sudo apt-get update
+sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+```
+
+Optional ohne `sudo`:
+```bash
+sudo usermod -aG docker $USER
+newgrp docker
+```
+
+### macOS / Windows
+- Installiere **Docker Desktop**: https://www.docker.com/products/docker-desktop/
+
+### Installation prüfen
+```bash
+docker --version
+docker compose version
+```
+
+---
+
+## 1) Voraussetzungen
 - Docker + Docker Compose installiert
-- Port `5173` (Frontend), `8000` (Backend), `5432` (Postgres), `6379` (Redis) frei
+- Ports `5173` (Frontend), `8000` (Backend), `5432` (Postgres), `6379` (Redis) frei
 
-## 1) Ins Projekt wechseln
+## 2) Ins Projekt wechseln
 ```bash
 cd /workspace/LazyPOD
 ```
 
-## 2) Environment-Datei anlegen
+## 3) Environment-Datei anlegen
 ```bash
 cp .env.example .env
 ```
 
-## 3) Alle Services bauen und starten
+## 4) Alle Services bauen und starten
 ```bash
 docker compose up --build
 ```
 
-## 4) Wichtige URLs öffnen
+## 5) Wichtige URLs öffnen
 - Frontend: http://localhost:5173
 - Backend API: http://localhost:8000/api
 - Health: http://localhost:8000/api/health
 - API Docs: http://localhost:8000/api/docs
 
-## 5) Tests in laufenden Containern ausführen (optional)
+## 6) Tests in laufenden Containern ausführen (optional)
 Backend:
 ```bash
 docker compose exec backend pytest
@@ -38,12 +74,12 @@ Frontend:
 docker compose exec frontend npm run test
 ```
 
-## 6) Services stoppen
+## 7) Services stoppen
 ```bash
 docker compose down
 ```
 
-## 7) (Optional) Volumes inkl. DB löschen
+## 8) (Optional) Volumes inkl. DB löschen
 ```bash
 docker compose down -v
 ```
