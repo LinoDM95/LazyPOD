@@ -1,0 +1,110 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+dist
+dist-ssr
+*.local
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+########################
+# OS / Editor
+########################
+.DS_Store
+Thumbs.db
+
+.vscode/
+.idea/
+*.iml
+
+########################
+# Python allgemein
+########################
+__pycache__/
+*.py[cod]
+*.pyd
+
+# Virtual Envs
+.venv/
+venv/
+env/
+ENV/
+
+# Python build / packaging
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# Tests / Type checking / Lint caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.cache/
+
+# Coverage
+.coverage
+coverage/
+htmlcov/
+
+# Logs
+*.log
+
+########################
+# Django
+########################
+db.sqlite3
+db.sqlite3-journal
+
+# Local overrides / secrets
+local_settings.py
+
+# Uploads & collected static (nicht versionieren)
+media/
+staticfiles/
+
+# Compiled translations
+*.mo
+
+########################
+# Node / React / Vite
+########################
+node_modules/
+
+# Vite / bundler output
+dist/
+dist-ssr/
+.vite/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Tooling caches
+.eslintcache
+*.tsbuildinfo
+
+########################
+# Env files (Secrets)
+########################
+.env
+.env.*
+!.env.example
+!.env.template
