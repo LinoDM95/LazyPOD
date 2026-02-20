@@ -1,15 +1,27 @@
+import urllib.parse
+
 from django.conf import settings
 from django.db import transaction
+from django.shortcuts import redirect
 from rest_framework import status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .models import DesignAsset, ProductDraft, Template
+from .integrations import (
+    GelatoService,
+    IntegrationError,
+    IntegrationStore,
+    ShopifyService,
+    integration_status_payload,
+    mark_verified,
+)
+from .models import DesignAsset, IntegrationConnection, ProductDraft, Template
 from .serializers import (
     BulkDraftCreateSerializer,
     DesignAssetSerializer,
     ProductDraftSerializer,
+    ShopifyStartSerializer,
     TemplateSerializer,
 )
 from .services import GelatoAdapter
@@ -91,3 +103,113 @@ class DraftPushView(APIView):
         draft.save(update_fields=["status", "updated_at"])
         task = push_draft_to_shopify.delay(draft.id)
         return Response({"task_id": task.id, "draft_id": draft.id}, status=status.HTTP_202_ACCEPTED)
+
+
+class IntegrationsView(APIView):
+    def get(self, _request):
+        return Response(
+            {
+                "items": [
+                    {
+                        "provider": item.provider,
+                        "status": item.status,
+                        "errorMessage": item.error_message,
+                        "metadata": item.metadata,
+                    }
+                    for item in integration_status_payload()
+                ]
+            }
+        )
+
+
+class GelatoIntegrationView(APIView):
+    def post(self, request):
+        api_key = str(request.data.get("apiKey", "")).strip()
+        if not api_key:
+            return Response({"detail": "API key is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        connection = IntegrationStore.get_or_create(IntegrationConnection.Provider.GELATO)
+        try:
+            GelatoService.test_key(api_key)
+            IntegrationStore.set_secret(connection, {"apiKey": api_key})
+            mark_verified(connection)
+            return Response({"ok": True})
+        except IntegrationError as exc:
+            connection.last_error = str(exc)
+            connection.save(update_fields=["last_error", "updated_at"])
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
+    def delete(self, _request):
+        connection = IntegrationStore.get_or_create(IntegrationConnection.Provider.GELATO)
+        IntegrationStore.clear(connection)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class ShopifyStartView(APIView):
+    def post(self, request):
+        serializer = ShopifyStartSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        try:
+            shop_domain = ShopifyService.normalize_shop_domain(serializer.validated_data["shopDomain"])
+            callback_url = request.build_absolute_uri("/api/integrations/shopify/callback")
+            redirect_url, _state = ShopifyService.create_oauth_redirect(shop_domain, callback_url)
+            return Response({"redirectUrl": redirect_url})
+        except IntegrationError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
+
+class ShopifyCallbackView(APIView):
+    authentication_classes = []
+    permission_classes = []
+
+    def get(self, request):
+        params = {key: value for key, value in request.query_params.items()}
+        shop = params.get("shop", "")
+        state = params.get("state", "")
+        code = params.get("code", "")
+
+        if not shop or not state or not code:
+            return redirect(f"{settings.APP_URL}/integrations?shopify=error&reason=missing_params")
+
+        try:
+            ShopifyService.verify_state(state, shop)
+            if not ShopifyService.verify_hmac(params, settings.SHOPIFY_CLIENT_SECRET):
+                raise IntegrationError("HMAC check failed")
+            access_token = ShopifyService.exchange_token(shop, code)
+        except IntegrationError as exc:
+            connection = IntegrationStore.get_or_create(IntegrationConnection.Provider.SHOPIFY)
+            connection.last_error = str(exc)
+            connection.save(update_fields=["last_error", "updated_at"])
+            reason = urllib.parse.quote(str(exc))
+            return redirect(f"{settings.APP_URL}/integrations?shopify=error&reason={reason}")
+
+        connection = IntegrationStore.get_or_create(IntegrationConnection.Provider.SHOPIFY)
+        IntegrationStore.set_secret(connection, {"shop": shop, "accessToken": access_token})
+        connection.metadata = {"shopDomain": shop}
+        connection.last_error = ""
+        connection.save(update_fields=["metadata", "last_error", "updated_at"])
+        return redirect(f"{settings.APP_URL}/integrations?shopify=connected")
+
+
+class ShopifyIntegrationView(APIView):
+    def delete(self, _request):
+        connection = IntegrationStore.get_or_create(IntegrationConnection.Provider.SHOPIFY)
+        IntegrationStore.clear(connection)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class ShopifyTestView(APIView):
+    def post(self, _request):
+        connection = IntegrationStore.get_or_create(IntegrationConnection.Provider.SHOPIFY)
+        secret = IntegrationStore.get_secret(connection)
+        if not secret:
+            return Response({"detail": "Shopify is not connected"}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            ShopifyService.test_connection(secret["shop"], secret["accessToken"])
+            mark_verified(connection)
+            return Response({"ok": True})
+        except IntegrationError as exc:
+            connection.last_error = str(exc)
+            connection.save(update_fields=["last_error", "updated_at"])
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)

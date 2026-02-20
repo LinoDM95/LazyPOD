@@ -60,3 +60,18 @@ class JobRun(TimestampedModel):
     reference_id = models.CharField(max_length=100)
     status = models.CharField(max_length=16, choices=Status.choices, default=Status.QUEUED)
     detail = models.JSONField(default=dict, blank=True)
+
+
+class IntegrationConnection(TimestampedModel):
+    class Provider(models.TextChoices):
+        SHOPIFY = "shopify", "Shopify"
+        GELATO = "gelato", "Gelato"
+
+    provider = models.CharField(max_length=32, choices=Provider.choices, unique=True)
+    encrypted_secret = models.TextField(blank=True)
+    metadata = models.JSONField(default=dict, blank=True)
+    last_error = models.TextField(blank=True)
+    last_verified_at = models.DateTimeField(null=True, blank=True)
+
+    def __str__(self) -> str:
+        return self.provider

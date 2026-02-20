@@ -85,3 +85,9 @@ USE_MOCK_APIS = os.getenv("USE_MOCK_APIS", "true").lower() == "true"
 
 CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL", "redis://redis:6379/0")
 CELERY_RESULT_BACKEND = os.getenv("CELERY_RESULT_BACKEND", CELERY_BROKER_URL)
+
+
+APP_URL = os.getenv("APP_URL", "http://localhost:5173")
+SHOPIFY_CLIENT_ID = os.getenv("SHOPIFY_CLIENT_ID", "")
+SHOPIFY_CLIENT_SECRET = os.getenv("SHOPIFY_CLIENT_SECRET", "")
+SHOPIFY_SCOPES = os.getenv("SHOPIFY_SCOPES", "read_products,write_products")
