@@ -54,3 +54,7 @@ class ShopifyProductSerializer(serializers.ModelSerializer):
     class Meta:
         model = ShopifyProduct
         fields = ["id", "shopify_product_id", "payload", "created_at"]
+
+
+class ShopifyStartSerializer(serializers.Serializer):
+    shopDomain = serializers.CharField(max_length=255)

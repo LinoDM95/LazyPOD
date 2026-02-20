@@ -28,3 +28,16 @@ export type ProductDraft = {
   created_at: string;
   updated_at: string;
 };
+
+export type IntegrationStatus = 'connected' | 'disconnected' | 'error';
+
+export type IntegrationItem = {
+  provider: 'shopify' | 'gelato';
+  status: IntegrationStatus;
+  errorMessage?: string | null;
+  metadata: Record<string, string>;
+};
+
+export type IntegrationListResponse = {
+  items: IntegrationItem[];
+};
